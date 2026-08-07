@@ -27,7 +27,7 @@ export function LoginForm() {
         return;
       }
 
-      router.push("/leads");
+      router.push("/dashboard");
       router.refresh();
     } catch {
       setError("No se pudo conectar. Intentá de nuevo en unos segundos.");

@@ -1,4 +1,13 @@
-import { Building2, KanbanSquare, PhoneOff, RefreshCw, Settings, Users, type LucideIcon } from "lucide-react";
+import {
+  Building2,
+  KanbanSquare,
+  LayoutDashboard,
+  PhoneOff,
+  RefreshCw,
+  Settings,
+  Users,
+  type LucideIcon,
+} from "lucide-react";
 
 export interface NavItem {
   href: string;
@@ -7,6 +16,7 @@ export interface NavItem {
 }
 
 export const NAV_ITEMS: NavItem[] = [
+  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/leads", label: "Leads", icon: KanbanSquare },
   { href: "/inmobiliarios", label: "Inmobiliarios", icon: Building2 },
   { href: "/usuarios", label: "Usuarios", icon: Users },

@@ -7,8 +7,7 @@ const PUBLIC_PATHS = ["/login"];
  * Refresca la sesión Supabase en cada request y redirige a /login si no hay
  * sesión activa para rutas del panel admin. También propaga el usuario ya
  * validado vía el header `x-user-email`, para que los Server Components no
- * tengan que repetir el round-trip de red llamando a supabase.auth.getUser()
- * de nuevo.
+ * tengan que volver a verificar la sesión.
  */
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
@@ -34,28 +33,30 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // getClaims() verifica el JWT localmente (JWKS cacheado en el proceso) en
+  // vez de hacer un round-trip de red a Supabase Auth como getUser() — esto
+  // corre en CADA navegación del panel, así que el ahorro es enorme.
+  const { data } = await supabase.auth.getClaims();
+  const claims = data?.claims;
 
   const isPublicPath = PUBLIC_PATHS.some((path) =>
     request.nextUrl.pathname.startsWith(path)
   );
 
-  if (!user && !isPublicPath) {
+  if (!claims && !isPublicPath) {
     const redirectUrl = request.nextUrl.clone();
     redirectUrl.pathname = "/login";
     return NextResponse.redirect(redirectUrl);
   }
 
-  if (user && request.nextUrl.pathname === "/login") {
+  if (claims && request.nextUrl.pathname === "/login") {
     const redirectUrl = request.nextUrl.clone();
-    redirectUrl.pathname = "/leads";
+    redirectUrl.pathname = "/dashboard";
     return NextResponse.redirect(redirectUrl);
   }
 
-  if (user) {
-    request.headers.set("x-user-email", user.email ?? "");
+  if (claims) {
+    request.headers.set("x-user-email", typeof claims.email === "string" ? claims.email : "");
   } else {
     request.headers.delete("x-user-email");
   }

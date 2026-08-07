@@ -210,6 +210,30 @@ export async function fetchRunLogTail(runId: string, maxLines = 15): Promise<str
     .slice(-maxLines);
 }
 
+export interface ApifyAccountLimits {
+  usageUsd: number;
+  maxUsageUsd: number;
+  remainingUsd: number;
+}
+
+/** Uso y límite mensual de la cuenta de Apify — usado para no disparar corridas sin crédito disponible. */
+export async function fetchAccountLimits(): Promise<ApifyAccountLimits> {
+  const token = requireEnv("APIFY_API_TOKEN");
+  const response = await fetch(`${APIFY_API_BASE}/users/me/limits?token=${encodeURIComponent(token)}`);
+
+  if (!response.ok) {
+    const body = await response.text();
+    throw new Error(`Apify fetchAccountLimits falló (${response.status}): ${body}`);
+  }
+
+  const json = (await response.json()) as {
+    data: { limits: { maxMonthlyUsageUsd: number }; current: { monthlyUsageUsd: number } };
+  };
+  const maxUsageUsd = json.data.limits.maxMonthlyUsageUsd;
+  const usageUsd = json.data.current.monthlyUsageUsd;
+  return { usageUsd, maxUsageUsd, remainingUsd: maxUsageUsd - usageUsd };
+}
+
 export interface MappedPropertyFeatures {
   hasSwimmingPool?: boolean;
   hasTerrace?: boolean;

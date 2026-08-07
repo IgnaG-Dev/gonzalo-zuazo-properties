@@ -1,5 +1,5 @@
 import { createAdminClient } from "./supabase/admin";
-import { fetchDatasetItems, fetchRun, mapApifyItemToLead, triggerScrapeRun } from "./apify";
+import { fetchAccountLimits, fetchDatasetItems, fetchRun, mapApifyItemToLead, triggerScrapeRun } from "./apify";
 import { normalizeToE164Spain } from "./phone";
 import type { ScrapeRunStatus } from "./types";
 
@@ -11,6 +11,15 @@ import type { ScrapeRunStatus } from "./types";
  */
 export async function startScrapeRun(): Promise<{ apifyRunId: string }> {
   const admin = createAdminClient();
+
+  // Defensa en profundidad: el botón "Ejecutar ahora" ya se deshabilita en el
+  // cliente sin crédito, pero esta ruta también puede llamarse directo.
+  const limits = await fetchAccountLimits();
+  if (limits.remainingUsd <= 0) {
+    throw new Error(
+      `Sin crédito disponible en Apify este mes (usado $${limits.usageUsd.toFixed(2)} de $${limits.maxUsageUsd.toFixed(2)})`
+    );
+  }
 
   const { data: settings, error: settingsError } = await admin
     .from("settings")

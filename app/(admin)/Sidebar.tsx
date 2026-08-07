@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { NAV_ITEMS } from "./nav-items";
@@ -10,13 +11,17 @@ export function Sidebar({ email }: { email: string }) {
 
   return (
     <aside className="hidden w-64 shrink-0 flex-col border-r border-neutral-200 bg-white md:flex dark:border-neutral-800 dark:bg-neutral-900">
-      <div className="flex items-center gap-2.5 border-b border-neutral-200 px-5 py-4 dark:border-neutral-800">
-        <div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-accent-600 text-sm font-semibold text-white">
-          GZ
+      <div className="flex items-center justify-center border-b border-neutral-200 px-5 py-6 dark:border-neutral-800">
+        <div className="flex h-20 w-full items-center justify-center rounded-lg bg-accent-900 p-2.5">
+          <Image
+            src="/brand/logo.png"
+            alt="Gonzalo Zuazo Properties"
+            width={914}
+            height={457}
+            priority
+            className="h-full w-full object-contain"
+          />
         </div>
-        <p className="truncate text-sm font-semibold text-neutral-900 dark:text-neutral-100">
-          Gonzalo Zuazo Properties
-        </p>
       </div>
 
       <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto p-3">

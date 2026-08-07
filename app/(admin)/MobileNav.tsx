@@ -1,6 +1,7 @@
 "use client";
 
 import { Menu, X } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
@@ -23,13 +24,15 @@ export function MobileNav({ email }: { email: string }) {
   return (
     <>
       <header className="flex items-center justify-between border-b border-neutral-200 bg-white px-4 py-3 md:hidden dark:border-neutral-800 dark:bg-neutral-900">
-        <div className="flex items-center gap-2.5">
-          <div className="flex size-7 items-center justify-center rounded-md bg-accent-600 text-xs font-semibold text-white">
-            GZ
-          </div>
-          <p className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">
-            Gonzalo Zuazo Properties
-          </p>
+        <div className="flex h-10 w-20 shrink-0 items-center justify-center rounded-lg bg-accent-900 p-1.5">
+          <Image
+            src="/brand/logo.png"
+            alt="Gonzalo Zuazo Properties"
+            width={914}
+            height={457}
+            priority
+            className="h-full w-full object-contain"
+          />
         </div>
         <button
           onClick={() => setOpen(true)}

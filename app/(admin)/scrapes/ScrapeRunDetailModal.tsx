@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import type { ScrapeRun } from "../../../lib/types";
 import { Badge, type BadgeTone } from "../Badge";
 import { Modal } from "../Modal";
+import { ScrapeStepChecklist } from "./ScrapeStepChecklist";
 
 const STATUS_TONES: Record<string, BadgeTone> = {
   pending: "neutral",
@@ -16,6 +17,7 @@ const STATUS_TONES: Record<string, BadgeTone> = {
 const ACTIVE_STATUSES = new Set(["pending", "running"]);
 
 interface ApifyProgress {
+  apifyStatus?: string;
   itemCount: number;
   logTail: string[];
 }
@@ -40,9 +42,9 @@ export function ScrapeRunDetailModal({ run, onClose }: { run: ScrapeRun; onClose
           setProgressError(body.error ?? "no se pudo consultar Apify");
           return;
         }
-        const data = (await res.json()) as { itemCount: number; logTail: string[] };
+        const data = (await res.json()) as { status: string; itemCount: number; logTail: string[] };
         if (!cancelled) {
-          setProgress({ itemCount: data.itemCount, logTail: data.logTail });
+          setProgress({ apifyStatus: data.status, itemCount: data.itemCount, logTail: data.logTail });
           setProgressError(null);
         }
       } catch {
@@ -110,22 +112,30 @@ export function ScrapeRunDetailModal({ run, onClose }: { run: ScrapeRun; onClose
       )}
 
       <div>
-        <p className="text-xs text-neutral-500 dark:text-neutral-500">Progreso en Apify</p>
+        <p className="mb-2 text-xs text-neutral-500 dark:text-neutral-500">Progreso</p>
         {progressError ? (
-          <p className="mt-1 text-xs text-neutral-400 dark:text-neutral-600">{progressError}</p>
+          <p className="text-xs text-neutral-400 dark:text-neutral-600">{progressError}</p>
         ) : progress ? (
-          <div className="mt-1 flex flex-col gap-2">
-            <p className="text-sm text-neutral-700 dark:text-neutral-300">
-              {progress.itemCount} anuncios {isActive ? "extraídos hasta ahora" : "extraídos en total"}
-            </p>
+          <div className="flex flex-col gap-3">
+            <ScrapeStepChecklist
+              dbStatus={run.status}
+              apifyStatus={progress.apifyStatus}
+              itemCount={progress.itemCount}
+              logTail={progress.logTail}
+            />
             {progress.logTail.length > 0 && (
-              <pre className="max-h-48 overflow-y-auto rounded-md bg-neutral-900 px-3 py-2 text-[11px] leading-relaxed text-neutral-300">
-                {progress.logTail.join("\n")}
-              </pre>
+              <details>
+                <summary className="cursor-pointer text-[11px] font-medium text-neutral-500 hover:text-neutral-800 dark:text-neutral-500 dark:hover:text-neutral-300">
+                  Ver log completo
+                </summary>
+                <pre className="mt-2 max-h-48 overflow-y-auto rounded-md bg-neutral-900 px-3 py-2 text-[11px] leading-relaxed text-neutral-300">
+                  {progress.logTail.join("\n")}
+                </pre>
+              </details>
             )}
           </div>
         ) : (
-          <p className="mt-1 text-xs text-neutral-400 dark:text-neutral-600">Consultando…</p>
+          <p className="text-xs text-neutral-400 dark:text-neutral-600">Consultando…</p>
         )}
       </div>
     </Modal>

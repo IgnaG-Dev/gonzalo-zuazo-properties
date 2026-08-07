@@ -1,6 +1,6 @@
 "use client";
 
-import { Eye, Trash2 } from "lucide-react";
+import { Eye, TriangleAlert, Trash2 } from "lucide-react";
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { createClient } from "../../../lib/supabase/client";
 import type { ScrapeRun } from "../../../lib/types";
@@ -8,6 +8,7 @@ import { Badge, type BadgeTone } from "../Badge";
 import { ConfirmActionButton } from "../ConfirmActionButton";
 import { IconButton } from "../IconButton";
 import { ScrapeRunDetailModal } from "./ScrapeRunDetailModal";
+import { ScrapeStepChecklist } from "./ScrapeStepChecklist";
 
 const STATUS_TONES: Record<string, BadgeTone> = {
   pending: "neutral",
@@ -18,6 +19,7 @@ const STATUS_TONES: Record<string, BadgeTone> = {
 };
 
 interface RunProgress {
+  apifyStatus?: string;
   itemCount: number;
   logTail: string[];
 }
@@ -38,6 +40,7 @@ export function ScrapeRunsTable({
   const [runs, setRuns] = useState(initialRuns);
   const [progress, setProgress] = useState<Record<string, RunProgress>>({});
   const [detailRunId, setDetailRunId] = useState<string | null>(null);
+  const [realtimeError, setRealtimeError] = useState(false);
   const detailRun = runs.find((run) => run.id === detailRunId) ?? null;
 
   // Realtime: refleja altas (nueva corrida), cambios de estado (webhook de
@@ -77,7 +80,14 @@ export function ScrapeRunsTable({
           setDetailRunId((current) => (current === deletedId ? null : current));
         }
       )
-      .subscribe();
+      .subscribe((subscribeStatus, err) => {
+        if (subscribeStatus === "CHANNEL_ERROR" || subscribeStatus === "TIMED_OUT" || subscribeStatus === "CLOSED") {
+          console.error("[scrapes] falló la conexión en tiempo real", subscribeStatus, err);
+          setRealtimeError(true);
+        } else if (subscribeStatus === "SUBSCRIBED") {
+          setRealtimeError(false);
+        }
+      });
 
     return () => {
       supabase.removeChannel(channel);
@@ -110,9 +120,12 @@ export function ScrapeRunsTable({
           try {
             const res = await fetch(`/api/scrapes/${runId}/progress`);
             if (!res.ok || cancelled) return;
-            const data = (await res.json()) as { itemCount: number; logTail: string[] };
+            const data = (await res.json()) as { status: string; itemCount: number; logTail: string[] };
             if (cancelled) return;
-            setProgress((prev) => ({ ...prev, [runId]: { itemCount: data.itemCount, logTail: data.logTail } }));
+            setProgress((prev) => ({
+              ...prev,
+              [runId]: { apifyStatus: data.status, itemCount: data.itemCount, logTail: data.logTail },
+            }));
           } catch {
             // best-effort, se reintenta en el próximo tick
           }
@@ -143,90 +156,99 @@ export function ScrapeRunsTable({
   }
 
   return (
-    <div className="table-shell">
-      <table className="min-w-full divide-y divide-neutral-200 text-sm dark:divide-neutral-800">
-        <thead className="bg-neutral-50 dark:bg-neutral-900">
-          <tr>
-            <th className="table-head-cell">Run ID</th>
-            <th className="table-head-cell">Estado</th>
-            <th className="table-head-cell text-right">Creados</th>
-            <th className="table-head-cell text-right">Actualizados</th>
-            <th className="table-head-cell text-right">Agencias</th>
-            <th className="table-head-cell text-right">Inválidos</th>
-            <th className="table-head-cell">Error</th>
-            <th className="table-head-cell">Fecha</th>
-            <th className="table-head-cell" />
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800/60">
-          {runs.map((run) => {
-            const isActive = ACTIVE_STATUSES.has(run.status);
-            const runProgress = progress[run.apify_run_id];
+    <div>
+      {realtimeError && (
+        <div className="mb-3 flex items-center gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-300">
+          <TriangleAlert className="size-4 shrink-0" strokeWidth={2} aria-hidden="true" />
+          No se pudo conectar en tiempo real. Los cambios de estado no se van a reflejar solos — recargá la
+          página para verlos.
+        </div>
+      )}
+      <div className="table-shell">
+        <table className="min-w-full divide-y divide-neutral-200 text-sm dark:divide-neutral-800">
+          <thead className="bg-neutral-50 dark:bg-neutral-900">
+            <tr>
+              <th className="table-head-cell">Run ID</th>
+              <th className="table-head-cell">Estado</th>
+              <th className="table-head-cell text-right">Creados</th>
+              <th className="table-head-cell text-right">Actualizados</th>
+              <th className="table-head-cell text-right">Agencias</th>
+              <th className="table-head-cell text-right">Inválidos</th>
+              <th className="table-head-cell">Error</th>
+              <th className="table-head-cell">Fecha</th>
+              <th className="table-head-cell" />
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800/60">
+            {runs.map((run) => {
+              const isActive = ACTIVE_STATUSES.has(run.status);
+              const runProgress = progress[run.apify_run_id];
 
-            return (
-              <Fragment key={run.id}>
-                <tr className="table-row">
-                  <td className="table-cell font-mono text-xs text-neutral-500 dark:text-neutral-400">
-                    {run.apify_run_id}
-                  </td>
-                  <td className="table-cell">
-                    <Badge tone={STATUS_TONES[run.status] ?? "neutral"} dot={isActive} pulse={isActive}>
-                      {run.status}
-                    </Badge>
-                  </td>
-                  <td className="table-cell text-right tabular-nums">{run.leads_created}</td>
-                  <td className="table-cell text-right tabular-nums">{run.leads_updated}</td>
-                  <td className="table-cell text-right tabular-nums">{run.leads_skipped_agency}</td>
-                  <td className="table-cell text-right tabular-nums">{run.leads_skipped_invalid}</td>
-                  <td
-                    className="table-cell max-w-xs truncate text-red-600 dark:text-red-400"
-                    title={run.error_message ?? ""}
-                  >
-                    {run.error_message ?? "—"}
-                  </td>
-                  <td className="table-cell text-neutral-500 dark:text-neutral-500">
-                    {new Date(run.created_at).toLocaleString("es-ES")}
-                  </td>
-                  <td className="table-cell">
-                    <div className="flex items-center justify-end gap-1">
-                      <IconButton icon={Eye} label="Ver detalle" onClick={() => setDetailRunId(run.id)} />
-                      <ConfirmActionButton
-                        icon={Trash2}
-                        label="Eliminar"
-                        variant="danger"
-                        confirmMessage={`¿Eliminar la corrida ${run.apify_run_id} del historial?`}
-                        onConfirm={() => handleDelete(run)}
-                      />
-                    </div>
-                  </td>
-                </tr>
-                {isActive && (
-                  <tr className="bg-neutral-50/60 dark:bg-neutral-900/40">
-                    <td colSpan={9} className="px-4 py-3">
-                      {runProgress ? (
-                        <div className="flex flex-col gap-2">
-                          <p className="text-xs font-medium text-neutral-600 dark:text-neutral-400">
-                            {runProgress.itemCount} anuncios extraídos hasta ahora en Apify
-                          </p>
-                          {runProgress.logTail.length > 0 && (
-                            <pre className="max-h-32 overflow-y-auto rounded-md bg-neutral-900 px-3 py-2 text-[11px] leading-relaxed text-neutral-300">
-                              {runProgress.logTail.join("\n")}
-                            </pre>
-                          )}
-                        </div>
-                      ) : (
-                        <p className="text-xs text-neutral-400 dark:text-neutral-500">
-                          Consultando progreso en Apify…
-                        </p>
-                      )}
+              return (
+                <Fragment key={run.id}>
+                  <tr className="table-row">
+                    <td className="table-cell font-mono text-xs text-neutral-500 dark:text-neutral-400">
+                      {run.apify_run_id}
+                    </td>
+                    <td className="table-cell">
+                      <Badge tone={STATUS_TONES[run.status] ?? "neutral"} dot={isActive} pulse={isActive}>
+                        {run.status}
+                      </Badge>
+                    </td>
+                    <td className="table-cell text-right tabular-nums">{run.leads_created}</td>
+                    <td className="table-cell text-right tabular-nums">{run.leads_updated}</td>
+                    <td className="table-cell text-right tabular-nums">{run.leads_skipped_agency}</td>
+                    <td className="table-cell text-right tabular-nums">{run.leads_skipped_invalid}</td>
+                    <td
+                      className="table-cell max-w-xs truncate text-red-600 dark:text-red-400"
+                      title={run.error_message ?? ""}
+                    >
+                      {run.error_message ?? "—"}
+                    </td>
+                    <td className="table-cell text-neutral-500 dark:text-neutral-500">
+                      {new Date(run.created_at).toLocaleString("es-ES")}
+                    </td>
+                    <td className="table-cell">
+                      <div className="flex items-center justify-end gap-1">
+                        <IconButton icon={Eye} label="Ver detalle" onClick={() => setDetailRunId(run.id)} />
+                        <ConfirmActionButton
+                          icon={Trash2}
+                          label="Eliminar"
+                          variant="danger"
+                          confirmMessage={`¿Eliminar la corrida ${run.apify_run_id} del historial?`}
+                          onConfirm={() => handleDelete(run)}
+                        />
+                      </div>
                     </td>
                   </tr>
-                )}
-              </Fragment>
-            );
-          })}
-        </tbody>
-      </table>
+                  {isActive && (
+                    <tr className="bg-neutral-50/60 dark:bg-neutral-900/40">
+                      <td colSpan={9} className="px-4 py-3">
+                        <ScrapeStepChecklist
+                          dbStatus={run.status}
+                          apifyStatus={runProgress?.apifyStatus}
+                          itemCount={runProgress?.itemCount}
+                          logTail={runProgress?.logTail ?? []}
+                        />
+                        {runProgress && runProgress.logTail.length > 0 && (
+                          <details className="mt-2">
+                            <summary className="cursor-pointer text-[11px] font-medium text-neutral-500 hover:text-neutral-800 dark:text-neutral-500 dark:hover:text-neutral-300">
+                              Ver log completo
+                            </summary>
+                            <pre className="mt-2 max-h-32 overflow-y-auto rounded-md bg-neutral-900 px-3 py-2 text-[11px] leading-relaxed text-neutral-300">
+                              {runProgress.logTail.join("\n")}
+                            </pre>
+                          </details>
+                        )}
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
 
       {detailRun && <ScrapeRunDetailModal run={detailRun} onClose={() => setDetailRunId(null)} />}
     </div>

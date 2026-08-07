@@ -68,6 +68,14 @@ body {
   border-radius: 2px;
 }
 
+/* Tailwind v4 Preflight resets <button> to the browser default
+   (cursor: default) instead of pointer. Restore the hand cursor on every
+   clickable control so hover state actually reads as clickable. */
+button:not(:disabled),
+[role="button"]:not([aria-disabled="true"]) {
+  cursor: pointer;
+}
+
 @layer components {
   .btn-primary {
     @apply inline-flex items-center justify-center gap-1.5 rounded-md px-4 py-2 text-sm font-medium

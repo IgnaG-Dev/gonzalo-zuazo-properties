@@ -1,10 +1,8 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 export function TriggerScrapeButton() {
-  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -22,7 +20,8 @@ export function TriggerScrapeButton() {
       return;
     }
 
-    router.refresh();
+    // La fila nueva aparece sola vía Realtime (ver ScrapeRunsTable) — no
+    // hace falta forzar un refresh de la página.
   }
 
   return (

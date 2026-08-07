@@ -171,6 +171,45 @@ export async function fetchDatasetItems(datasetId: string): Promise<Record<strin
   return (await response.json()) as Record<string, unknown>[];
 }
 
+export interface ApifyDatasetInfo {
+  id: string;
+  itemCount: number;
+}
+
+/** Metadata del dataset de una corrida — itemCount se actualiza en vivo mientras el actor corre. */
+export async function fetchDatasetInfo(datasetId: string): Promise<ApifyDatasetInfo> {
+  const token = requireEnv("APIFY_API_TOKEN");
+  const response = await fetch(
+    `${APIFY_API_BASE}/datasets/${encodeURIComponent(datasetId)}?token=${encodeURIComponent(token)}`
+  );
+
+  if (!response.ok) {
+    const body = await response.text();
+    throw new Error(`Apify fetchDatasetInfo falló (${response.status}): ${body}`);
+  }
+
+  const json = (await response.json()) as { data: ApifyDatasetInfo };
+  return json.data;
+}
+
+/** Últimas líneas del log en vivo de la corrida — texto real emitido por el actor, sin procesar. */
+export async function fetchRunLogTail(runId: string, maxLines = 15): Promise<string[]> {
+  const token = requireEnv("APIFY_API_TOKEN");
+  const response = await fetch(
+    `${APIFY_API_BASE}/actor-runs/${encodeURIComponent(runId)}/log?token=${encodeURIComponent(token)}`
+  );
+
+  // El log puede no estar disponible todavía justo al arrancar la corrida.
+  if (!response.ok) return [];
+
+  const text = await response.text();
+  return text
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0)
+    .slice(-maxLines);
+}
+
 export interface MappedPropertyFeatures {
   hasSwimmingPool?: boolean;
   hasTerrace?: boolean;

@@ -4,14 +4,17 @@ import { Eye, Trash2 } from "lucide-react";
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { createClient } from "../../../lib/supabase/client";
 import type { ScrapeRun } from "../../../lib/types";
+import { Badge, type BadgeTone } from "../Badge";
+import { ConfirmActionButton } from "../ConfirmActionButton";
+import { IconButton } from "../IconButton";
 import { ScrapeRunDetailModal } from "./ScrapeRunDetailModal";
 
-const STATUS_STYLES: Record<string, string> = {
-  pending: "bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300",
-  running: "bg-accent-50 text-accent-700 dark:bg-accent-900/30 dark:text-accent-300",
-  succeeded: "bg-emerald-50 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300",
-  failed: "bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-300",
-  aborted: "bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-300",
+const STATUS_TONES: Record<string, BadgeTone> = {
+  pending: "neutral",
+  running: "info",
+  succeeded: "success",
+  failed: "danger",
+  aborted: "danger",
 };
 
 interface RunProgress {
@@ -21,12 +24,21 @@ interface RunProgress {
 
 const ACTIVE_STATUSES = new Set(["pending", "running"]);
 
-export function ScrapeRunsTable({ initialRuns }: { initialRuns: ScrapeRun[] }) {
+export function ScrapeRunsTable({
+  initialRuns,
+  page,
+  status,
+  pageSize,
+}: {
+  initialRuns: ScrapeRun[];
+  page: number;
+  status: string;
+  pageSize: number;
+}) {
   const [runs, setRuns] = useState(initialRuns);
   const [progress, setProgress] = useState<Record<string, RunProgress>>({});
   const [detailRunId, setDetailRunId] = useState<string | null>(null);
   const detailRun = runs.find((run) => run.id === detailRunId) ?? null;
-  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   // Realtime: refleja altas (nueva corrida), cambios de estado (webhook de
   // Apify) y bajas apenas ocurren en la base, sin que el usuario recargue la
@@ -40,7 +52,12 @@ export function ScrapeRunsTable({ initialRuns }: { initialRuns: ScrapeRun[] }) {
         { event: "INSERT", schema: "public", table: "scrape_runs" },
         (payload) => {
           const inserted = payload.new as ScrapeRun;
-          setRuns((prev) => [inserted, ...prev.filter((run) => run.id !== inserted.id)].slice(0, 50));
+          // Solo se antepone si estamos en la página 1 y el filtro activo
+          // corresponde — si no, una corrida nueva podría aparecer en una
+          // vista paginada/filtrada donde no corresponde.
+          const matchesFilter = status === "todos" || inserted.status === status;
+          if (page !== 1 || !matchesFilter) return;
+          setRuns((prev) => [inserted, ...prev.filter((run) => run.id !== inserted.id)].slice(0, pageSize));
         }
       )
       .on(
@@ -65,20 +82,13 @@ export function ScrapeRunsTable({ initialRuns }: { initialRuns: ScrapeRun[] }) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [page, status, pageSize]);
 
   async function handleDelete(run: ScrapeRun) {
-    if (!window.confirm(`¿Eliminar la corrida ${run.apify_run_id} del historial?`)) return;
-
-    setDeletingId(run.id);
-    try {
-      const res = await fetch(`/api/scrapes/${run.apify_run_id}`, { method: "DELETE" });
-      if (res.ok) {
-        setRuns((prev) => prev.filter((r) => r.id !== run.id));
-        setDetailRunId((current) => (current === run.id ? null : current));
-      }
-    } finally {
-      setDeletingId(null);
+    const res = await fetch(`/api/scrapes/${run.apify_run_id}`, { method: "DELETE" });
+    if (res.ok) {
+      setRuns((prev) => prev.filter((r) => r.id !== run.id));
+      setDetailRunId((current) => (current === run.id ? null : current));
     }
   }
 
@@ -160,16 +170,9 @@ export function ScrapeRunsTable({ initialRuns }: { initialRuns: ScrapeRun[] }) {
                     {run.apify_run_id}
                   </td>
                   <td className="table-cell">
-                    <span
-                      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${
-                        STATUS_STYLES[run.status] ?? STATUS_STYLES.pending
-                      }`}
-                    >
-                      {isActive && (
-                        <span className="size-1.5 animate-pulse rounded-full bg-current" aria-hidden="true" />
-                      )}
+                    <Badge tone={STATUS_TONES[run.status] ?? "neutral"} dot={isActive} pulse={isActive}>
                       {run.status}
-                    </span>
+                    </Badge>
                   </td>
                   <td className="table-cell text-right tabular-nums">{run.leads_created}</td>
                   <td className="table-cell text-right tabular-nums">{run.leads_updated}</td>
@@ -186,23 +189,14 @@ export function ScrapeRunsTable({ initialRuns }: { initialRuns: ScrapeRun[] }) {
                   </td>
                   <td className="table-cell">
                     <div className="flex items-center justify-end gap-1">
-                      <button
-                        onClick={() => setDetailRunId(run.id)}
-                        aria-label="Ver detalle"
-                        title="Ver detalle"
-                        className="btn-ghost !px-2"
-                      >
-                        <Eye className="size-4" strokeWidth={2} />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(run)}
-                        disabled={deletingId === run.id}
-                        aria-label="Eliminar"
-                        title="Eliminar"
-                        className="btn-ghost !px-2 text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
-                      >
-                        <Trash2 className="size-4" strokeWidth={2} />
-                      </button>
+                      <IconButton icon={Eye} label="Ver detalle" onClick={() => setDetailRunId(run.id)} />
+                      <ConfirmActionButton
+                        icon={Trash2}
+                        label="Eliminar"
+                        variant="danger"
+                        confirmMessage={`¿Eliminar la corrida ${run.apify_run_id} del historial?`}
+                        onConfirm={() => handleDelete(run)}
+                      />
                     </div>
                   </td>
                 </tr>

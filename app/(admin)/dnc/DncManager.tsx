@@ -1,10 +1,12 @@
 "use client";
 
+import { Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { DoNotCallEntry } from "../../../lib/types";
+import { ConfirmActionButton } from "../ConfirmActionButton";
 
-export function DncManager({ entries }: { entries: DoNotCallEntry[] }) {
+export function DncManager({ entries, hasQuery }: { entries: DoNotCallEntry[]; hasQuery?: boolean }) {
   const router = useRouter();
   const [phone, setPhone] = useState("");
   const [reason, setReason] = useState("");
@@ -71,9 +73,13 @@ export function DncManager({ entries }: { entries: DoNotCallEntry[] }) {
 
       {entries.length === 0 ? (
         <div className="card flex flex-col items-center gap-1 px-6 py-16 text-center">
-          <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">Lista vacía</p>
+          <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
+            {hasQuery ? "No hay números que coincidan" : "Lista vacía"}
+          </p>
           <p className="max-w-sm text-sm text-neutral-500 dark:text-neutral-500">
-            Los números que agregués acá quedan excluidos de futuras llamadas automáticas.
+            {hasQuery
+              ? "Probá con otra búsqueda."
+              : "Los números que agregués acá quedan excluidos de futuras llamadas automáticas."}
           </p>
         </div>
       ) : (
@@ -96,9 +102,13 @@ export function DncManager({ entries }: { entries: DoNotCallEntry[] }) {
                     {new Date(entry.created_at).toLocaleDateString("es-ES")}
                   </td>
                   <td className="table-cell text-right">
-                    <button onClick={() => handleRemove(entry.id)} className="link-danger text-xs font-medium">
-                      Quitar
-                    </button>
+                    <ConfirmActionButton
+                      icon={Trash2}
+                      label="Quitar"
+                      variant="danger"
+                      confirmMessage={`¿Quitar "${entry.phone_e164}" de la lista de exclusión?`}
+                      onConfirm={() => handleRemove(entry.id)}
+                    />
                   </td>
                 </tr>
               ))}

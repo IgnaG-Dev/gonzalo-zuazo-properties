@@ -11,9 +11,11 @@ import {
   type DragEndEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
+import { Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import type { Lead, LeadStatus } from "../../../lib/types";
+import { ConfirmActionButton } from "../ConfirmActionButton";
 
 const COLUMNS: LeadStatus[] = ["nuevo lead", "en duda", "interesado", "no interesado"];
 
@@ -63,6 +65,13 @@ export function KanbanBoard({ leads }: { leads: Lead[] }) {
     }
   }
 
+  async function handleDelete(leadId: string) {
+    const response = await fetch(`/api/leads/${leadId}`, { method: "DELETE" });
+    if (response.ok) {
+      setItems((prev) => prev.filter((l) => l.id !== leadId));
+    }
+  }
+
   return (
     <div>
       {error && (
@@ -73,7 +82,7 @@ export function KanbanBoard({ leads }: { leads: Lead[] }) {
       <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
         <div className="flex gap-4 overflow-x-auto pb-2">
           {columns.map((column) => (
-            <KanbanColumn key={column.status} status={column.status} leads={column.leads} />
+            <KanbanColumn key={column.status} status={column.status} leads={column.leads} onDelete={handleDelete} />
           ))}
         </div>
         <DragOverlay>{activeLead ? <LeadCard lead={activeLead} dragging /> : null}</DragOverlay>
@@ -82,7 +91,15 @@ export function KanbanBoard({ leads }: { leads: Lead[] }) {
   );
 }
 
-function KanbanColumn({ status, leads }: { status: LeadStatus; leads: Lead[] }) {
+function KanbanColumn({
+  status,
+  leads,
+  onDelete,
+}: {
+  status: LeadStatus;
+  leads: Lead[];
+  onDelete: (id: string) => void;
+}) {
   const { setNodeRef, isOver } = useDroppable({ id: status });
   const visible = leads.slice(0, 50);
 
@@ -101,7 +118,7 @@ function KanbanColumn({ status, leads }: { status: LeadStatus; leads: Lead[] }) 
       </div>
       <div className="flex min-h-24 flex-col gap-2 px-3 pb-3">
         {visible.map((lead) => (
-          <DraggableLeadCard key={lead.id} lead={lead} />
+          <DraggableLeadCard key={lead.id} lead={lead} onDelete={onDelete} />
         ))}
         {leads.length > visible.length && (
           <p className="px-1 text-xs text-neutral-500 dark:text-neutral-500">
@@ -118,17 +135,25 @@ function KanbanColumn({ status, leads }: { status: LeadStatus; leads: Lead[] }) 
   );
 }
 
-function DraggableLeadCard({ lead }: { lead: Lead }) {
+function DraggableLeadCard({ lead, onDelete }: { lead: Lead; onDelete: (id: string) => void }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: lead.id });
 
   return (
-    <div
-      ref={setNodeRef}
-      {...listeners}
-      {...attributes}
-      className={isDragging ? "opacity-30" : ""}
-    >
+    <div ref={setNodeRef} {...listeners} {...attributes} className={`relative ${isDragging ? "opacity-30" : ""}`}>
       <LeadCard lead={lead} />
+      <div
+        className="absolute right-1.5 top-1.5"
+        onPointerDown={(e) => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <ConfirmActionButton
+          icon={Trash2}
+          label="Eliminar"
+          variant="danger"
+          confirmMessage={`¿Eliminar el lead "${lead.address ?? lead.id}"?`}
+          onConfirm={() => onDelete(lead.id)}
+        />
+      </div>
     </div>
   );
 }
@@ -140,7 +165,7 @@ function LeadCard({ lead, dragging }: { lead: Lead; dragging?: boolean }) {
       onClick={(e) => dragging && e.preventDefault()}
       className={`kanban-card block ${dragging ? "rotate-2 shadow-lg" : ""}`}
     >
-      <p className="line-clamp-2 text-sm font-medium text-neutral-900 dark:text-neutral-100">
+      <p className="line-clamp-2 pr-7 text-sm font-medium text-neutral-900 dark:text-neutral-100">
         {lead.address ?? "(sin dirección)"}
       </p>
       <p className="mt-0.5 text-xs text-neutral-500 dark:text-neutral-500">

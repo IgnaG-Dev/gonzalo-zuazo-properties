@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { createClient } from "../../../../lib/supabase/server";
 import { FeatureBadges } from "../../FeatureBadges";
 import { StatusBadge } from "../StatusBadge";
+import { DeleteLeadButton } from "./DeleteLeadButton";
 import { StatusOverrideForm } from "./StatusOverrideForm";
 
 export default async function LeadDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -79,7 +80,10 @@ export default async function LeadDetailPage({ params }: { params: Promise<{ id:
           )}
         </div>
         <div className="flex shrink-0 flex-col items-end gap-2">
-          <StatusBadge status={lead.status} />
+          <div className="flex items-center gap-2">
+            <StatusBadge status={lead.status} />
+            <DeleteLeadButton leadId={lead.id} address={lead.address} />
+          </div>
           <span className="text-right text-xs text-neutral-500 dark:text-neutral-500">
             {lead.call_attempts} intento(s)
             <br />

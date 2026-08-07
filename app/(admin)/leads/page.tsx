@@ -4,9 +4,10 @@ import { sanitizeSearchTerm } from "../../../lib/search";
 import type { LeadStatus } from "../../../lib/types";
 import { Pagination } from "../Pagination";
 import { SearchForm } from "../SearchForm";
+import { Tabs } from "../Tabs";
 import { ViewToggle } from "../ViewToggle";
 import { KanbanBoard } from "./KanbanBoard";
-import { StatusBadge } from "./StatusBadge";
+import { LeadsTable } from "./LeadsTable";
 
 const STATUS_TABS: { value: LeadStatus | "todos"; label: string }[] = [
   { value: "todos", label: "Todos" },
@@ -51,7 +52,7 @@ export default async function LeadsPage({
         {error && (
           <p className="mb-4 text-sm text-red-600 dark:text-red-400">Error cargando leads: {error.message}</p>
         )}
-        <KanbanBoard leads={leads ?? []} />
+        <KanbanBoard key={q} leads={leads ?? []} />
       </div>
     );
   }
@@ -85,29 +86,7 @@ export default async function LeadsPage({
     <div>
       <Header view={view} q={q} status={status} searchParams={params} />
 
-      <div className="mb-5 flex gap-1 border-b border-neutral-200 dark:border-neutral-800">
-        {STATUS_TABS.map((tab) => {
-          const isActive = status === tab.value;
-          const href = buildListHref({ ...params, status: tab.value === "todos" ? undefined : tab.value, page: undefined });
-          return (
-            <Link
-              key={tab.value}
-              href={href}
-              aria-current={isActive ? "page" : undefined}
-              className={`relative px-3 py-2.5 text-sm font-medium transition-colors duration-150 ${
-                isActive
-                  ? "text-accent-700 dark:text-accent-300"
-                  : "text-neutral-500 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-neutral-200"
-              }`}
-            >
-              {tab.label}
-              {isActive && (
-                <span className="absolute inset-x-0 -bottom-px h-0.5 rounded-full bg-accent-600 dark:bg-accent-400" />
-              )}
-            </Link>
-          );
-        })}
-      </div>
+      <Tabs basePath="/leads" paramName="status" current={status} options={STATUS_TABS} searchParams={params} />
 
       {error && (
         <p className="mb-4 text-sm text-red-600 dark:text-red-400">Error cargando leads: {error.message}</p>
@@ -117,56 +96,7 @@ export default async function LeadsPage({
         <EmptyState status={status} hasQuery={Boolean(q)} />
       ) : (
         <>
-          <div className="table-shell">
-            <table className="min-w-full divide-y divide-neutral-200 text-sm dark:divide-neutral-800">
-              <thead className="bg-neutral-50 dark:bg-neutral-900">
-                <tr>
-                  <th className="table-head-cell">Dirección</th>
-                  <th className="table-head-cell text-right">Precio</th>
-                  <th className="table-head-cell">Teléfono</th>
-                  <th className="table-head-cell">Estado</th>
-                  <th className="table-head-cell text-right">Intentos</th>
-                  <th className="table-head-cell">Reunión</th>
-                  <th className="table-head-cell">Actualizado</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800/60">
-                {(leads ?? []).map((lead) => (
-                  <tr key={lead.id} className="table-row">
-                    <td className="table-cell">
-                      <Link
-                        href={`/leads/${lead.id}`}
-                        className="font-medium text-neutral-900 hover:text-accent-700 dark:text-neutral-100 dark:hover:text-accent-300"
-                      >
-                        {lead.address ?? "(sin dirección)"}
-                      </Link>
-                      <p className="text-xs text-neutral-500 dark:text-neutral-500">{lead.owner_name ?? "—"}</p>
-                    </td>
-                    <td className="table-cell text-right tabular-nums">
-                      {lead.price != null ? `${lead.price.toLocaleString("es-ES")} €` : "—"}
-                    </td>
-                    <td className="table-cell tabular-nums">
-                      {lead.phone_e164 ?? <span className="text-neutral-400 dark:text-neutral-600">sin teléfono</span>}
-                    </td>
-                    <td className="table-cell">
-                      <StatusBadge status={lead.status} />
-                    </td>
-                    <td className="table-cell text-right tabular-nums">{lead.call_attempts}</td>
-                    <td className="table-cell">
-                      {lead.meeting_requested ? (
-                        <span className="text-emerald-600 dark:text-emerald-400">Sí</span>
-                      ) : (
-                        <span className="text-neutral-400 dark:text-neutral-600">—</span>
-                      )}
-                    </td>
-                    <td className="table-cell text-neutral-500 dark:text-neutral-500">
-                      {new Date(lead.updated_at).toLocaleDateString("es-ES")}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <LeadsTable key={`${status}-${q}-${page}`} leads={leads ?? []} />
           <Pagination basePath="/leads" currentPage={page} totalPages={totalPages} searchParams={params} />
         </>
       )}
@@ -233,13 +163,4 @@ function EmptyState({ status, hasQuery }: { status: string; hasQuery: boolean })
       )}
     </div>
   );
-}
-
-function buildListHref(params: Record<string, string | undefined>): string {
-  const search = new URLSearchParams();
-  for (const [key, value] of Object.entries(params)) {
-    if (value) search.set(key, value);
-  }
-  const qs = search.toString();
-  return qs ? `/leads?${qs}` : "/leads";
 }

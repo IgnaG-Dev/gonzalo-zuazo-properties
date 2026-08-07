@@ -1,6 +1,5 @@
 import { ImageOff } from "lucide-react";
 import Image from "next/image";
-import Link from "next/link";
 import type { Lead } from "../../../lib/types";
 import { FeatureBadges } from "../FeatureBadges";
 import { StatusBadge } from "../leads/StatusBadge";
@@ -9,7 +8,7 @@ export function PropertyCard({ lead }: { lead: Lead }) {
   const cover = lead.photos[0];
 
   return (
-    <Link href={`/leads/${lead.id}`} className="property-card">
+    <div className="property-card">
       <div className="relative aspect-[4/3] w-full bg-neutral-100 dark:bg-neutral-800">
         {cover ? (
           <Image
@@ -25,7 +24,7 @@ export function PropertyCard({ lead }: { lead: Lead }) {
             <ImageOff className="size-8" strokeWidth={1.5} aria-hidden="true" />
           </div>
         )}
-        <div className="absolute right-2 top-2">
+        <div className="absolute left-2 top-2">
           <StatusBadge status={lead.status} />
         </div>
       </div>
@@ -52,6 +51,6 @@ export function PropertyCard({ lead }: { lead: Lead }) {
           {lead.owner_name ?? "Propietario desconocido"}
         </p>
       </div>
-    </Link>
+    </div>
   );
 }

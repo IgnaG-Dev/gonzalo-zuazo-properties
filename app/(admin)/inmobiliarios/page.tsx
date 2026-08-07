@@ -1,12 +1,9 @@
 import { Search } from "lucide-react";
-import Link from "next/link";
 import { createClient } from "../../../lib/supabase/server";
 import { sanitizeSearchTerm } from "../../../lib/search";
-import { FeatureBadges } from "../FeatureBadges";
 import { Pagination } from "../Pagination";
-import { StatusBadge } from "../leads/StatusBadge";
 import { ViewToggle } from "../ViewToggle";
-import { PropertyCard } from "./PropertyCard";
+import { PropertyResults } from "./PropertyResults";
 
 const CARDS_PAGE_SIZE = 24;
 const LIST_PAGE_SIZE = 25;
@@ -136,60 +133,9 @@ export default async function InmobiliariosPage({
             Probá con otros filtros, o corré un scrape desde la sección Scrapes.
           </p>
         </div>
-      ) : view === "cards" ? (
-        <>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {(leads ?? []).map((lead) => (
-              <PropertyCard key={lead.id} lead={lead} />
-            ))}
-          </div>
-          <Pagination basePath="/inmobiliarios" currentPage={page} totalPages={totalPages} searchParams={params} />
-        </>
       ) : (
         <>
-          <div className="table-shell">
-            <table className="min-w-full divide-y divide-neutral-200 text-sm dark:divide-neutral-800">
-              <thead className="bg-neutral-50 dark:bg-neutral-900">
-                <tr>
-                  <th className="table-head-cell">Dirección</th>
-                  <th className="table-head-cell text-right">Precio</th>
-                  <th className="table-head-cell text-right">m²</th>
-                  <th className="table-head-cell text-right">Hab.</th>
-                  <th className="table-head-cell">Features</th>
-                  <th className="table-head-cell">Estado</th>
-                  <th className="table-head-cell">Propietario</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800/60">
-                {(leads ?? []).map((lead) => (
-                  <tr key={lead.id} className="table-row">
-                    <td className="table-cell">
-                      <Link
-                        href={`/leads/${lead.id}`}
-                        className="font-medium text-neutral-900 hover:text-accent-700 dark:text-neutral-100 dark:hover:text-accent-300"
-                      >
-                        {lead.address ?? "(sin dirección)"}
-                      </Link>
-                    </td>
-                    <td className="table-cell text-right tabular-nums">
-                      {lead.price != null ? `${lead.price.toLocaleString("es-ES")} €` : "—"}
-                    </td>
-                    <td className="table-cell text-right tabular-nums">{lead.size_m2 ?? "—"}</td>
-                    <td className="table-cell text-right tabular-nums">{lead.rooms ?? "—"}</td>
-                    <td className="table-cell">
-                      <FeatureBadges lead={lead} compact />
-                    </td>
-                    <td className="table-cell">
-                      <StatusBadge status={lead.status} />
-                    </td>
-                    <td className="table-cell text-neutral-500 dark:text-neutral-500">
-                      {lead.owner_name ?? "—"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <PropertyResults key={`${view}-${q}-${rooms}-${sort}-${page}`} leads={leads ?? []} view={view} />
           <Pagination basePath="/inmobiliarios" currentPage={page} totalPages={totalPages} searchParams={params} />
         </>
       )}

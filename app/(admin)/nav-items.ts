@@ -14,3 +14,8 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/dnc", label: "Lista de exclusión", icon: PhoneOff },
   { href: "/settings", label: "Configuración", icon: Settings },
 ];
+
+/** Encuentra el item de nav activo para un pathname — usado por Sidebar, MobileNav y TopBar. */
+export function getActiveNavItem(pathname: string): NavItem | undefined {
+  return NAV_ITEMS.find((item) => pathname === item.href || pathname.startsWith(`${item.href}/`));
+}

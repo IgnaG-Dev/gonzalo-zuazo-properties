@@ -1,23 +1,12 @@
-import { PhoneOff } from "lucide-react";
-import Link from "next/link";
 import { createClient } from "../../../lib/supabase/server";
 import { sanitizeSearchTerm } from "../../../lib/search";
 import { Pagination } from "../Pagination";
 import { SearchForm } from "../SearchForm";
+import { OwnersTable } from "./OwnersTable";
+import type { Owner } from "./types";
 
 const PAGE_SIZE = 25;
 const FETCH_CAP = 2000;
-
-interface Owner {
-  key: string;
-  ownerName: string | null;
-  phoneE164: string | null;
-  phoneRaw: string | null;
-  sellerType: string | null;
-  propertyCount: number;
-  lastActivity: string;
-  inDnc: boolean;
-}
 
 export default async function UsuariosPage({
   searchParams,
@@ -111,60 +100,7 @@ export default async function UsuariosPage({
         </div>
       ) : (
         <>
-          <div className="table-shell">
-            <table className="min-w-full divide-y divide-neutral-200 text-sm dark:divide-neutral-800">
-              <thead className="bg-neutral-50 dark:bg-neutral-900">
-                <tr>
-                  <th className="table-head-cell">Nombre</th>
-                  <th className="table-head-cell">Teléfono</th>
-                  <th className="table-head-cell">Tipo</th>
-                  <th className="table-head-cell text-right">Propiedades</th>
-                  <th className="table-head-cell">Última actividad</th>
-                  <th className="table-head-cell" />
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800/60">
-                {pageOwners.map((owner) => (
-                  <tr key={owner.key} className="table-row">
-                    <td className="table-cell font-medium text-neutral-900 dark:text-neutral-100">
-                      {owner.ownerName ?? "Sin nombre"}
-                    </td>
-                    <td className="table-cell tabular-nums">
-                      <span className="inline-flex items-center gap-1.5">
-                        {owner.phoneE164 ?? owner.phoneRaw ?? (
-                          <span className="text-neutral-400 dark:text-neutral-600">sin teléfono</span>
-                        )}
-                        {owner.inDnc && (
-                          <span
-                            title="En lista de exclusión"
-                            className="inline-flex items-center gap-1 rounded-full bg-red-50 px-1.5 py-0.5 text-[10px] font-medium text-red-700 dark:bg-red-900/30 dark:text-red-300"
-                          >
-                            <PhoneOff className="size-3" strokeWidth={2} />
-                            DNC
-                          </span>
-                        )}
-                      </span>
-                    </td>
-                    <td className="table-cell text-neutral-500 dark:text-neutral-500">
-                      {owner.sellerType ?? "—"}
-                    </td>
-                    <td className="table-cell text-right tabular-nums">{owner.propertyCount}</td>
-                    <td className="table-cell text-neutral-500 dark:text-neutral-500">
-                      {new Date(owner.lastActivity).toLocaleDateString("es-ES")}
-                    </td>
-                    <td className="table-cell text-right">
-                      <Link
-                        href={`/leads?view=list&q=${encodeURIComponent(owner.phoneE164 ?? owner.ownerName ?? "")}`}
-                        className="text-xs font-medium text-accent-700 hover:text-accent-800 dark:text-accent-300 dark:hover:text-accent-200"
-                      >
-                        Ver leads →
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <OwnersTable key={`${q}-${page}`} owners={pageOwners} />
           <Pagination basePath="/usuarios" currentPage={page} totalPages={totalPages} searchParams={params} />
         </>
       )}

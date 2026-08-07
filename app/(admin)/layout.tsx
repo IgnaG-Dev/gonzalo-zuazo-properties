@@ -2,6 +2,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { MobileNav } from "./MobileNav";
 import { Sidebar } from "./Sidebar";
+import { TopBar } from "./TopBar";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   // El middleware ya valida la sesión contra Supabase Auth y propaga el
@@ -15,8 +16,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   return (
     <div className="flex h-screen overflow-hidden bg-neutral-50 dark:bg-neutral-950">
-      <Sidebar email={email} />
+      <Sidebar />
       <div className="flex flex-1 flex-col overflow-hidden">
+        <TopBar email={email} />
         <MobileNav email={email} />
         <main className="flex-1 overflow-y-auto px-6 py-8 lg:px-10">
           <div className="mx-auto max-w-6xl">{children}</div>

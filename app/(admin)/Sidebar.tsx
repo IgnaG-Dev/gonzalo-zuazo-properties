@@ -1,17 +1,23 @@
 "use client";
 
+import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { NAV_ITEMS } from "./nav-items";
-import { LogoutButton } from "./LogoutButton";
+import { useSidebarCollapsed } from "./useSidebarCollapsed";
 
-export function Sidebar({ email }: { email: string }) {
+export function Sidebar() {
   const pathname = usePathname();
+  const { collapsed, toggle } = useSidebarCollapsed();
 
   return (
-    <aside className="hidden w-64 shrink-0 flex-col border-r border-neutral-200 bg-white md:flex dark:border-neutral-800 dark:bg-neutral-900">
-      <div className="flex items-center justify-center border-b border-neutral-200 px-5 py-6 dark:border-neutral-800">
+    <aside
+      className={`hidden shrink-0 flex-col border-r border-neutral-200 bg-white transition-[width] duration-150 ease-out md:flex dark:border-neutral-800 dark:bg-neutral-900 ${
+        collapsed ? "w-[68px]" : "w-64"
+      }`}
+    >
+      <div className="flex items-center justify-center border-b border-neutral-200 px-3 py-6 dark:border-neutral-800">
         <div className="flex h-20 w-full items-center justify-center rounded-lg bg-accent-900 p-2.5">
           <Image
             src="/brand/logo.png"
@@ -33,18 +39,33 @@ export function Sidebar({ email }: { email: string }) {
               key={item.href}
               href={item.href}
               aria-current={isActive ? "page" : undefined}
-              className={isActive ? "sidebar-link-active" : "sidebar-link"}
+              title={collapsed ? item.label : undefined}
+              aria-label={collapsed ? item.label : undefined}
+              className={`${isActive ? "sidebar-link-active" : "sidebar-link"} ${collapsed ? "justify-center !px-0" : ""}`}
             >
               <Icon className="size-4 shrink-0" strokeWidth={2} aria-hidden="true" />
-              {item.label}
+              {!collapsed && item.label}
             </Link>
           );
         })}
       </nav>
 
       <div className="border-t border-neutral-200 p-3 dark:border-neutral-800">
-        <p className="truncate px-3 py-1 text-xs text-neutral-500 dark:text-neutral-500">{email}</p>
-        <LogoutButton />
+        <button
+          onClick={toggle}
+          aria-label={collapsed ? "Expandir menú" : "Contraer menú"}
+          title={collapsed ? "Expandir menú" : "Contraer menú"}
+          className={`sidebar-link w-full ${collapsed ? "justify-center !px-0" : ""}`}
+        >
+          {collapsed ? (
+            <PanelLeftOpen className="size-4 shrink-0" strokeWidth={2} aria-hidden="true" />
+          ) : (
+            <>
+              <PanelLeftClose className="size-4 shrink-0" strokeWidth={2} aria-hidden="true" />
+              Contraer
+            </>
+          )}
+        </button>
       </div>
     </aside>
   );

@@ -1,0 +1,29 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    "module": "CommonJS",
+    "outDir": "dist-worker",
+    "rootDir": ".",
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "declaration": false,
+    "sourceMap": false,
+    "types": ["node"]
+  },
+  "include": [
+    "worker/**/*.ts",
+    "lib/types.ts",
+    "lib/phone.ts",
+    "lib/calling-hours.ts",
+    "lib/apify.ts",
+    "lib/ingest.ts",
+    "lib/retell.ts",
+    "lib/eligibility.ts",
+    "lib/dial.ts",
+    "lib/supabase/admin.ts"
+  ],
+  "exclude": ["node_modules", ".next", "dist-worker", "app"]
+}

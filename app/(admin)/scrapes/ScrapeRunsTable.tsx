@@ -1,8 +1,10 @@
 "use client";
 
+import { Eye, Trash2 } from "lucide-react";
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { createClient } from "../../../lib/supabase/client";
 import type { ScrapeRun } from "../../../lib/types";
+import { ScrapeRunDetailModal } from "./ScrapeRunDetailModal";
 
 const STATUS_STYLES: Record<string, string> = {
   pending: "bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300",
@@ -22,9 +24,13 @@ const ACTIVE_STATUSES = new Set(["pending", "running"]);
 export function ScrapeRunsTable({ initialRuns }: { initialRuns: ScrapeRun[] }) {
   const [runs, setRuns] = useState(initialRuns);
   const [progress, setProgress] = useState<Record<string, RunProgress>>({});
+  const [detailRunId, setDetailRunId] = useState<string | null>(null);
+  const detailRun = runs.find((run) => run.id === detailRunId) ?? null;
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  // Realtime: refleja altas (nueva corrida) y cambios de estado (webhook de
-  // Apify) apenas ocurren en la base, sin que el usuario recargue la página.
+  // Realtime: refleja altas (nueva corrida), cambios de estado (webhook de
+  // Apify) y bajas apenas ocurren en la base, sin que el usuario recargue la
+  // página.
   useEffect(() => {
     const supabase = createClient();
     const channel = supabase
@@ -45,12 +51,36 @@ export function ScrapeRunsTable({ initialRuns }: { initialRuns: ScrapeRun[] }) {
           setRuns((prev) => prev.map((run) => (run.id === updated.id ? updated : run)));
         }
       )
+      .on(
+        "postgres_changes",
+        { event: "DELETE", schema: "public", table: "scrape_runs" },
+        (payload) => {
+          const deletedId = (payload.old as Partial<ScrapeRun>).id;
+          setRuns((prev) => prev.filter((run) => run.id !== deletedId));
+          setDetailRunId((current) => (current === deletedId ? null : current));
+        }
+      )
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
   }, []);
+
+  async function handleDelete(run: ScrapeRun) {
+    if (!window.confirm(`¿Eliminar la corrida ${run.apify_run_id} del historial?`)) return;
+
+    setDeletingId(run.id);
+    try {
+      const res = await fetch(`/api/scrapes/${run.apify_run_id}`, { method: "DELETE" });
+      if (res.ok) {
+        setRuns((prev) => prev.filter((r) => r.id !== run.id));
+        setDetailRunId((current) => (current === run.id ? null : current));
+      }
+    } finally {
+      setDeletingId(null);
+    }
+  }
 
   const activeRunIds = useMemo(
     () => runs.filter((run) => ACTIVE_STATUSES.has(run.status)).map((run) => run.apify_run_id),
@@ -115,6 +145,7 @@ export function ScrapeRunsTable({ initialRuns }: { initialRuns: ScrapeRun[] }) {
             <th className="table-head-cell text-right">Inválidos</th>
             <th className="table-head-cell">Error</th>
             <th className="table-head-cell">Fecha</th>
+            <th className="table-head-cell" />
           </tr>
         </thead>
         <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800/60">
@@ -153,10 +184,31 @@ export function ScrapeRunsTable({ initialRuns }: { initialRuns: ScrapeRun[] }) {
                   <td className="table-cell text-neutral-500 dark:text-neutral-500">
                     {new Date(run.created_at).toLocaleString("es-ES")}
                   </td>
+                  <td className="table-cell">
+                    <div className="flex items-center justify-end gap-1">
+                      <button
+                        onClick={() => setDetailRunId(run.id)}
+                        aria-label="Ver detalle"
+                        title="Ver detalle"
+                        className="btn-ghost !px-2"
+                      >
+                        <Eye className="size-4" strokeWidth={2} />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(run)}
+                        disabled={deletingId === run.id}
+                        aria-label="Eliminar"
+                        title="Eliminar"
+                        className="btn-ghost !px-2 text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+                      >
+                        <Trash2 className="size-4" strokeWidth={2} />
+                      </button>
+                    </div>
+                  </td>
                 </tr>
                 {isActive && (
                   <tr className="bg-neutral-50/60 dark:bg-neutral-900/40">
-                    <td colSpan={8} className="px-4 py-3">
+                    <td colSpan={9} className="px-4 py-3">
                       {runProgress ? (
                         <div className="flex flex-col gap-2">
                           <p className="text-xs font-medium text-neutral-600 dark:text-neutral-400">
@@ -181,6 +233,8 @@ export function ScrapeRunsTable({ initialRuns }: { initialRuns: ScrapeRun[] }) {
           })}
         </tbody>
       </table>
+
+      {detailRun && <ScrapeRunDetailModal run={detailRun} onClose={() => setDetailRunId(null)} />}
     </div>
   );
 }

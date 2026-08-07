@@ -18,17 +18,22 @@ export function LoginForm() {
     setLoading(true);
     setError(null);
 
-    const supabase = createClient();
-    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+    try {
+      const supabase = createClient();
+      const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
 
-    if (signInError) {
+      if (signInError) {
+        setError("Email o contraseña incorrectos.");
+        return;
+      }
+
+      router.push("/leads");
+      router.refresh();
+    } catch {
+      setError("No se pudo conectar. Intentá de nuevo en unos segundos.");
+    } finally {
       setLoading(false);
-      setError("Email o contraseña incorrectos.");
-      return;
     }
-
-    router.push("/leads");
-    router.refresh();
   }
 
   return (

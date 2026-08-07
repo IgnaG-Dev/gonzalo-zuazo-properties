@@ -5,7 +5,10 @@ const PUBLIC_PATHS = ["/login"];
 
 /**
  * Refresca la sesión Supabase en cada request y redirige a /login si no hay
- * sesión activa para rutas del panel admin.
+ * sesión activa para rutas del panel admin. También propaga el usuario ya
+ * validado vía el header `x-user-email`, para que los Server Components no
+ * tengan que repetir el round-trip de red llamando a supabase.auth.getUser()
+ * de nuevo.
  */
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
@@ -51,5 +54,16 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(redirectUrl);
   }
 
-  return supabaseResponse;
+  if (user) {
+    request.headers.set("x-user-email", user.email ?? "");
+  } else {
+    request.headers.delete("x-user-email");
+  }
+
+  const finalResponse = NextResponse.next({ request });
+  for (const cookie of supabaseResponse.cookies.getAll()) {
+    finalResponse.cookies.set(cookie);
+  }
+
+  return finalResponse;
 }
